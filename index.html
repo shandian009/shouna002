@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能整理助手</title>
+    <!-- 引入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自定义样式：设置 Inter 字体 */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* 隐藏文件输入框的默认样式 */
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full flex flex-col md:flex-row gap-8">
+        <!-- 左侧：上传区域 -->
+        <div class="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 text-center transition duration-300 ease-in-out hover:border-blue-400 hover:bg-blue-50">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">智能整理助手</h1>
+            <p class="text-gray-600 mb-6">上传杂物照片，获取智能整理建议。</p> <label for="imageUpload" class="cursor-pointer bg-blue-600 text-white font-semibold py-3 px-8 rounded-full shadow-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105">
+                选择图片
+            </label>
+            <input type="file" id="imageUpload" accept="image/*">
+
+            <div id="imagePreviewContainer" class="mt-8 hidden w-full max-h-80 overflow-hidden rounded-lg border border-gray-200">
+                <img id="imagePreview" src="#" alt="图片预览" class="w-full h-full object-contain">
+            </div>
+
+            <button id="recognizeButton" class="mt-8 bg-green-600 text-white font-semibold py-3 px-8 rounded-full shadow-md hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105 opacity-50 cursor-not-allowed" disabled>
+                识别杂物
+            </button>
+
+            <div id="loadingIndicator" class="mt-4 hidden text-blue-500">
+                <svg class="animate-spin h-5 w-5 text-blue-500 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                正在识别中...
+            </div>
+        </div>
+
+        <!-- 右侧：结果展示区域 -->
+        <div class="flex-1 bg-gray-100 rounded-lg p-6 flex flex-col items-center justify-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">整理建议</h2>
+            <div id="suggestionsContainer" class="w-full text-gray-700 text-left">
+                <p class="text-center text-gray-500">识别结果将显示在这里。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // 获取 DOM 元素
+const imageUpload = document.getElementById('imageUpload');
+const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+const imagePreview = document.getElementById('imagePreview');
+const recognizeButton = document.getElementById('recognizeButton');
+const suggestionsContainer = document.getElementById('suggestionsContainer');
+const loadingIndicator = document.getElementById('loadingIndicator');
+
+let uploadedImageBase64 = ''; // 用于存储上传图片的 Base64 编码
+
+// 监听图片上传事件
+imageUpload.addEventListener('change', function(event) {
+    const file = event.target.files[0]; // 获取选择的文件
+
+    if (file) {
+        const reader = new FileReader(); // 创建 FileReader 对象
+
+        reader.onload = function(e) {
+            // 读取文件成功后，显示图片预览
+            imagePreview.src = e.target.result;
+            imagePreviewContainer.classList.remove('hidden'); // 显示预览容器
+            recognizeButton.disabled = false; // 启用识别按钮
+            recognizeButton.classList.remove('opacity-50', 'cursor-not-allowed'); // 移除禁用样式
+            uploadedImageBase64 = e.target.result; // 存储 Base64 编码
+            suggestionsContainer.innerHTML = '<p class="text-center text-gray-500">点击“识别杂物”按钮开始识别。</p>'; // 清空建议
+        };
+
+        reader.readAsDataURL(file); // 将文件读取为 Data URL (Base64 编码)
+    } else {
+        // 没有选择文件时，隐藏预览并禁用按钮
+        imagePreviewContainer.classList.add('hidden');
+        imagePreview.src = '#';
+        recognizeButton.disabled = true;
+        recognizeButton.classList.add('opacity-50', 'cursor-not-allowed');
+        uploadedImageBase64 = '';
+        suggestionsContainer.innerHTML = '<p class="text-center text-gray-500">识别结果将显示在这里。</p>';
+    }
+    });
+
+// 真实图像识别 API 调用函数
+async function callImageRecognitionAPI(base64Image) {
+    // 后端代理的地址。部署到 Vercel 后，它会自动映射到 /api/recognize
+    const backendUrl = '/api/recognize'; 
+
+    try {
+        const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: base64Image }) // 发送 Base64 编码的图片
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`API request failed: ${response.status} - ${errorData.error || response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data; // 返回后端代理转发的百度 API 识别结果
+
+    } catch (error) {
+        console.error('Error calling backend API:', error);
+        throw new Error('Failed to connect to image recognition service.');
+    }
+}
+
+// 整理建议数据 (真实场景中，这些数据可能来自后端或更复杂的知识库)
+const organizationSuggestions = {
+    'T恤': {
+        tool: '折叠收纳盒',
+        imageUrl: 'https://placehold.co/150x150/87CEEB/ffffff?text=折叠收纳盒',
+        description: '将T恤叠好放入收纳盒，保持衣柜整洁。'
+    },
+    '书籍': {
+        tool: '书架',
+        imageUrl: 'https://placehold.co/150x150/A0522D/ffffff?text=书架',
+        description: '使用书架分类摆放，方便查找和阅读。'
+    },
+    '水杯': {
+        tool: '杯架/置物架',
+        imageUrl: 'https://placehold.co/150x150/6A5ACD/ffffff?text=杯架',
+        description: '放置在杯架或厨房置物架上，避免桌面凌乱。'
+    },
+    '数据线': {
+        tool: '数据线收纳包',
+        imageUrl: 'https://placehold.co/150x150/FFD700/000000?text=数据线收纳包',
+        description: '用收纳包或魔术贴捆绑，防止缠绕。'
+    },
+    '耳机': {
+        tool: '耳机收纳盒',
+        imageUrl: 'https://placehold.co/150x150/FF6347/ffffff?text=耳机收纳盒',
+        description: '放入专用收纳盒，保护耳机并防止丢失。'
+    },
+    '遥控器': {
+        tool: '遥控器收纳盒',
+        imageUrl: 'https://placehold.co/150x150/7FFF00/000000?text=遥控器收纳盒',
+        description: '统一放置在遥控器收纳盒中，方便取用。'
+    },
+    '笔': {
+        tool: '笔筒',
+        imageUrl: 'https://placehold.co/150x150/4682B4/ffffff?text=笔筒',
+        description: '将笔放入笔筒，保持桌面整洁。'
+    },
+    '笔记本电脑': {
+        tool: '电脑支架/收纳包',
+        imageUrl: 'https://placehold.co/150x150/DA70D6/ffffff?text=电脑收纳包',
+        description: '使用电脑支架或收纳包，保护设备并节省空间。'
+    }
+    // 您可以根据需要添加更多杂物和收纳建议
+};
+
+// 监听识别按钮点击事件
+recognizeButton.addEventListener('click', async function() {
+    if (!uploadedImageBase64) {
+        // 真实应用中，请使用自定义模态框代替 alert
+        alert('请先上传图片！'); 
+        return;
+    }
+
+    recognizeButton.disabled = true; // 禁用按钮，防止重复点击
+    recognizeButton.classList.add('opacity-50', 'cursor-not-allowed');
+    loadingIndicator.classList.remove('hidden'); // 显示加载指示器
+    suggestionsContainer.innerHTML = ''; // 清空之前的建议
+
+    try {
+        // 调用真实的图像识别 API (通过后端代理)
+        const recognitionResult = await callImageRecognitionAPI(uploadedImageBase64);
+
+        // 百度通用物体识别 API 的响应结构可能包含 'result' 数组
+        if (recognitionResult && recognitionResult.result && recognitionResult.result.length > 0) {
+            suggestionsContainer.innerHTML = '<h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">识别到的杂物及整理建议：</h3>';
+            recognitionResult.result.forEach(obj => {
+                const itemName = obj.root; // 百度通用物体识别返回的物体名称通常在 'root' 字段
+                // 或者 obj.keyword，具体取决于百度 API 的哪个接口和返回结构
+
+                const suggestion = organizationSuggestions[itemName];
+
+                if (suggestion) {
+                    const suggestionCard = `
+                        <div class="bg-white rounded-lg shadow-md p-4 mb-4 flex flex-col sm:flex-row items-center transition duration-300 ease-in-out hover:shadow-lg">
+                            <img src="${suggestion.imageUrl}" alt="${suggestion.tool} 图片" class="w-24 h-24 rounded-md object-cover mb-4 sm:mb-0 sm:mr-4 border border-gray-200">
+                            <div class="flex-1 text-center sm:text-left">
+                                <p class="text-lg font-bold text-blue-600 mb-1">${itemName}</p>
+                                <p class="text-gray-800 mb-2">建议收纳工具: <span class="font-semibold">${suggestion.tool}</span></p>
+                                <p class="text-gray-600 text-sm">${suggestion.description}</p>
+                            </div>
+                        </div>
+                    `;
+                    suggestionsContainer.innerHTML += suggestionCard;
+                } else {
+                    // 如果没有找到对应的收纳建议
+                    const noSuggestionCard = `
+                        <div class="bg-white rounded-lg shadow-md p-4 mb-4 flex items-center transition duration-300 ease-in-out hover:shadow-lg">
+                            <div class="flex-1 text-center">
+                                <p class="text-lg font-bold text-gray-600 mb-1">${itemName}</p>
+                                <p class="text-gray-500 text-sm">暂无特定收纳建议，请自行探索。</p>
+                            </div>
+                        </div>
+                    `;
+                    suggestionsContainer.innerHTML += noSuggestionCard;
+                }
+            });
+        } else {
+            suggestionsContainer.innerHTML = '<p class="text-center text-gray-500">未识别到任何杂物，请尝试其他图片。</p>';
+        }
+    } catch (error) {
+        console.error('识别失败:', error);
+        suggestionsContainer.innerHTML = `<p class="text-center text-red-500">识别过程中发生错误：${error.message || '未知错误'}，请检查后端服务是否运行或稍后再试。</p>`;
+    } finally {
+        loadingIndicator.classList.add('hidden'); // 隐藏加载指示器
+        recognizeButton.disabled = false; // 重新启用按钮
+        recognizeButton.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+});    // JavaScript 代码将在这里添加
+    </script>
+    </body>
+</html>

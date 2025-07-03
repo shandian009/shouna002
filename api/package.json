@@ -1,0 +1,9 @@
+{
+    "name": "recognize-api",
+    "version": "1.0.0",
+    "description": "Baidu AI image recognition proxy serverless function",
+    "main": "recognize.js",
+    "dependencies": {
+      "axios": "^1.0.0"
+    }
+  }

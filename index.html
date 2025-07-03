@@ -78,7 +78,7 @@ imageUpload.addEventListener('change', function(event) {
             recognizeButton.disabled = false; // 启用识别按钮
             recognizeButton.classList.remove('opacity-50', 'cursor-not-allowed'); // 移除禁用样式
             uploadedImageBase64 = e.target.result; // 存储 Base64 编码
-            suggestionsContainer.innerHTML = '<p class="text-center text-gray-500">点击“识别杂物”按钮开始识别。</p>'; // 清空建议
+            suggestionsContainer.innerHTML = '<p class="text-center text-gray-500">点击"识别杂物"按钮开始识别。</p>'; // 清空建议
         };
 
         reader.readAsDataURL(file); // 将文件读取为 Data URL (Base64 编码)
@@ -162,8 +162,93 @@ const organizationSuggestions = {
         tool: '电脑支架/收纳包',
         imageUrl: 'https://placehold.co/150x150/DA70D6/ffffff?text=电脑收纳包',
         description: '使用电脑支架或收纳包，保护设备并节省空间。'
+    },
+    // 新增和优化后的建议
+    '商品-家用电器': {
+        tool: '电器收纳柜/置物架',
+        imageUrl: 'https://placehold.co/150x150/FF8C00/ffffff?text=电器收纳柜',
+        description: '将小型家用电器（如搅拌机、烤面包机）收纳到专用柜或多层置物架中，保持台面整洁。'
+    },
+    '商品-数码产品': {
+        tool: '数码收纳包/桌面理线器',
+        imageUrl: 'https://placehold.co/150x150/8A2BE2/ffffff?text=数码收纳包',
+        description: '将充电器、移动电源等数码产品归类放入收纳包，或使用桌面理线器整理线缆。'
+    },
+    '建筑-室内': {
+        tool: '多功能储物柜/墙面置物架',
+        imageUrl: 'https://placehold.co/150x150/20B2AA/ffffff?text=储物柜',
+        description: '利用多功能储物柜或墙面置物架，有效利用垂直空间，提升室内整洁度。'
+    },
+    '商品-厨具/餐具': {
+        tool: '碗碟架/抽屉分隔器',
+        imageUrl: 'https://placehold.co/150x150/CD5C5C/ffffff?text=厨具收纳',
+        description: '使用碗碟架、抽屉分隔器或挂钩，让厨具餐具井然有序，方便取用。'
+    },
+    'Logo': {
+        tool: '文件盒/标签打印机',
+        imageUrl: 'https://placehold.co/150x150/4682B4/ffffff?text=文件盒',
+        description: '带有Logo的物品，如包装盒或文件，可归类放入文件盒，并使用标签打印机进行标识。'
+    },
+    '服装': {
+        tool: '衣物收纳袋/挂衣架',
+        imageUrl: 'https://placehold.co/150x150/FF69B4/ffffff?text=衣物收纳',
+        description: '将衣物分类折叠或悬挂，使用真空收纳袋或多层挂衣架节省空间。'
+    },
+    '鞋': {
+        tool: '鞋架/鞋盒',
+        imageUrl: 'https://placehold.co/150x150/9932CC/ffffff?text=鞋架',
+        description: '使用多层鞋架或透明鞋盒，保持鞋子整洁，防尘防潮。'
+    },
+    '包': {
+        tool: '包包收纳挂袋/防尘袋',
+        imageUrl: 'https://placehold.co/150x150/DAA520/000000?text=包包收纳',
+        description: '将包包放入防尘袋后挂起或放置在专用收纳格中，保持形状。'
+    },
+    '玩具': {
+        tool: '玩具收纳箱/网兜',
+        imageUrl: 'https://placehold.co/150x150/8FBC8F/ffffff?text=玩具收纳',
+        description: '使用大容量玩具收纳箱或悬挂式网兜，方便儿童整理和取用。'
+    },
+    '化妆品': {
+        tool: '化妆品收纳盒/抽屉分隔',
+        imageUrl: 'https://placehold.co/150x150/FFC0CB/000000?text=化妆品收纳',
+        description: '将化妆品按类别放入多格收纳盒或抽屉分隔板中，桌面更整洁。'
+    },
+    '文具': {
+        tool: '笔筒/文具盒/文件架',
+        imageUrl: 'https://placehold.co/150x150/48D1CC/ffffff?text=文具收纳',
+        description: '笔、本子、文件等文具可放入笔筒、文具盒或文件架，保持桌面有序。'
+    },
+    '药品': {
+        tool: '医药箱/分类药盒',
+        imageUrl: 'https://placehold.co/150x150/DC143C/ffffff?text=医药箱',
+        description: '将药品集中存放在医药箱中，并按日期或种类使用分类药盒。'
+    },
+    '工具': {
+        tool: '工具箱/工具挂板',
+        imageUrl: 'https://placehold.co/150x150/696969/ffffff?text=工具箱',
+        description: '将各类工具（如螺丝刀、扳手）放入工具箱，或挂在工具挂板上，方便查找。'
+    },
+    '食品': {
+        tool: '食品密封罐/冰箱收纳盒',
+        imageUrl: 'https://placehold.co/150x150/FFDAB9/000000?text=食品收纳',
+        description: '干货放入密封罐，新鲜食材使用冰箱收纳盒，保持食物新鲜和厨房整洁。'
+    },
+    '植物': {
+        tool: '花架/园艺工具箱',
+        imageUrl: 'https://placehold.co/150x150/9ACD32/ffffff?text=花架',
+        description: '盆栽可放置在花架上，园艺工具放入专用工具箱。'
+    },
+    '艺术品': {
+        tool: '展示架/防尘罩',
+        imageUrl: 'https://placehold.co/150x150/DDA0DD/000000?text=展示架',
+        description: '将艺术品放置在合适的展示架上，并考虑使用防尘罩保护。'
+    },
+    '运动器材': {
+        tool: '运动器材收纳架/挂钩',
+        imageUrl: 'https://placehold.co/150x150/4169E1/ffffff?text=运动收纳',
+        description: '利用墙面挂钩或专用收纳架存放球类、哑铃等运动器材。'
     }
-    // 您可以根据需要添加更多杂物和收纳建议
 };
 
 // 监听识别按钮点击事件
@@ -228,7 +313,7 @@ recognizeButton.addEventListener('click', async function() {
         recognizeButton.disabled = false; // 重新启用按钮
         recognizeButton.classList.remove('opacity-50', 'cursor-not-allowed');
     }
-});    // JavaScript 代码将在这里添加
+});
     </script>
     </body>
 </html>

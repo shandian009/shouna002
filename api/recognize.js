@@ -37,6 +37,75 @@ async function getAccessToken() {
     }
 }
 
+// 调用百度图像识别API的通用函数
+async function callBaiduAPI(endpoint, base64Image) {
+    const token = await getAccessToken();
+    const baiduApiUrl = `https://aip.baidubce.com/rest/2.0/image-classify/${endpoint}?access_token=${token}`;
+    const base64WithoutPrefix = base64Image.split(',')[1]; // 移除 "data:image/jpeg;base64," 等前缀
+
+    const response = await axios.post(baiduApiUrl, `image=${encodeURIComponent(base64WithoutPrefix)}`, {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        }
+    });
+
+    return response.data;
+}
+
+// 融合多个API结果的函数
+function mergeResults(results) {
+    const merged = {};
+    const allItems = [];
+
+    // 收集所有识别结果
+    results.forEach(result => {
+        if (result.result && Array.isArray(result.result)) {
+            result.result.forEach(item => {
+                const key = item.keyword || item.root || item.name || '未知物品';
+                const score = item.score || item.baike_info?.image_url ? 0.8 : 0.5;
+                
+                if (!merged[key]) {
+                    merged[key] = {
+                        keyword: key,
+                        root: item.root || key,
+                        score: score,
+                        count: 1,
+                        sources: []
+                    };
+                } else {
+                    merged[key].score = Math.max(merged[key].score, score);
+                    merged[key].count += 1;
+                }
+                
+                if (item.baike_info?.image_url) {
+                    merged[key].sources.push('baike');
+                }
+            });
+        }
+    });
+
+    // 转换为数组并按置信度排序
+    Object.values(merged).forEach(item => {
+        // 根据出现次数和置信度计算最终分数
+        const finalScore = item.score * (1 + item.count * 0.1);
+        allItems.push({
+            ...item,
+            finalScore: finalScore
+        });
+    });
+
+    // 按最终分数排序，返回前10个结果
+    return allItems
+        .sort((a, b) => b.finalScore - a.finalScore)
+        .slice(0, 10)
+        .map(item => ({
+            keyword: item.keyword,
+            root: item.root,
+            score: item.finalScore
+        }));
+}
+
 // Serverless Function 的主处理函数
 module.exports = async (req, res) => {
     // Vercel 会自动解析 POST 请求的 JSON 正文，并处理相同项目内的 API 路由的 CORS。
@@ -52,20 +121,39 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const token = await getAccessToken();
+        // 并行调用多个百度API接口以提高识别精度
+        const apiCalls = [
+            // 通用物体识别（基础）
+            callBaiduAPI('v2/advanced_general', image).catch(err => ({ error: 'advanced_general', message: err.message })),
+            // 图像主体检测（更精准）
+            callBaiduAPI('v1/object_detect', image).catch(err => ({ error: 'object_detect', message: err.message })),
+            // 动物识别（如果是动物相关）
+            callBaiduAPI('v1/animal', image).catch(err => ({ error: 'animal', message: err.message })),
+            // 植物识别（如果是植物相关）
+            callBaiduAPI('v1/plant', image).catch(err => ({ error: 'plant', message: err.message }))
+        ];
 
-        const baiduApiUrl = `https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general?access_token=${token}`;
-        const base64WithoutPrefix = image.split(',')[1]; // 移除 "data:image/jpeg;base64," 等前缀
+        const results = await Promise.allSettled(apiCalls);
+        
+        // 过滤成功的结果
+        const successfulResults = results
+            .filter(result => result.status === 'fulfilled' && !result.value.error)
+            .map(result => result.value);
 
-        const baiduResponse = await axios.post(baiduApiUrl, `image=${encodeURIComponent(base64WithoutPrefix)}`, {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json'
-            }
+        if (successfulResults.length === 0) {
+            throw new Error('所有API调用都失败了');
+        }
+
+        // 融合多个API的结果
+        const mergedResult = mergeResults(successfulResults);
+
+        // 返回融合后的结果
+        res.status(200).json({
+            result: mergedResult,
+            apiCount: successfulResults.length,
+            timestamp: new Date().toISOString()
         });
 
-        // 将百度 API 的响应直接返回给前端
-        res.status(200).json(baiduResponse.data);
     } catch (error) {
         console.error('图像识别失败:', error.response ? error.response.data : error.message);
         const errorMessage = error.message || '图像识别过程中发生未知错误。';

@@ -249,6 +249,57 @@ const organizationSuggestions = {
         tool: '运动器材收纳架/挂钩',
         imageUrl: 'https://placehold.co/150x150/4169E1/ffffff?text=运动收纳',
         description: '利用墙面挂钩或专用收纳架存放球类、哑铃等运动器材。'
+    },
+    // 更多常见物品的收纳建议
+    '手机': {
+        tool: '手机支架/充电收纳盒',
+        imageUrl: 'https://placehold.co/150x150/32CD32/ffffff?text=手机收纳',
+        description: '使用手机支架或充电收纳盒，保持桌面整洁并方便充电。'
+    },
+    '眼镜': {
+        tool: '眼镜盒/眼镜架',
+        imageUrl: 'https://placehold.co/150x150/708090/ffffff?text=眼镜收纳',
+        description: '将眼镜放入专用眼镜盒或放置在眼镜架上，防止刮花。'
+    },
+    '钥匙': {
+        tool: '钥匙挂钩/钥匙盒',
+        imageUrl: 'https://placehold.co/150x150/FFA500/ffffff?text=钥匙收纳',
+        description: '使用钥匙挂钩或钥匙盒，避免丢失并方便取用。'
+    },
+    '钱包': {
+        tool: '钱包收纳盒/挂钩',
+        imageUrl: 'https://placehold.co/150x150/8B4513/ffffff?text=钱包收纳',
+        description: '将钱包放入收纳盒或挂在专用挂钩上，保持整洁。'
+    },
+    '手表': {
+        tool: '手表收纳盒/表架',
+        imageUrl: 'https://placehold.co/150x150/C0C0C0/000000?text=手表收纳',
+        description: '使用手表收纳盒或表架，保护手表并方便选择。'
+    },
+    '充电器': {
+        tool: '充电器收纳盒/理线器',
+        imageUrl: 'https://placehold.co/150x150/FF4500/ffffff?text=充电器收纳',
+        description: '将充电器放入收纳盒，使用理线器整理线缆，避免缠绕。'
+    },
+    '书籍': {
+        tool: '书架/书立',
+        imageUrl: 'https://placehold.co/150x150/8B4513/ffffff?text=书架',
+        description: '使用书架或书立，按类别整理书籍，方便查找。'
+    },
+    '文件': {
+        tool: '文件盒/文件夹',
+        imageUrl: 'https://placehold.co/150x150/4682B4/ffffff?text=文件收纳',
+        description: '使用文件盒或文件夹，按重要性或类别整理文件。'
+    },
+    '照片': {
+        tool: '相册/照片框',
+        imageUrl: 'https://placehold.co/150x150/FFD700/000000?text=照片收纳',
+        description: '将照片放入相册或使用照片框展示，保护珍贵回忆。'
+    },
+    '卡片': {
+        tool: '卡片收纳盒/钱包',
+        imageUrl: 'https://placehold.co/150x150/DC143C/ffffff?text=卡片收纳',
+        description: '使用卡片收纳盒或专用钱包，整理各种卡片。'
     }
 };
 
@@ -269,12 +320,24 @@ recognizeButton.addEventListener('click', async function() {
         // 调用真实的图像识别 API (通过后端代理)
         const recognitionResult = await callImageRecognitionAPI(uploadedImageBase64);
 
-        // 百度通用物体识别 API 的响应结构可能包含 'result' 数组
+        // 优化后的识别结果处理
         if (recognitionResult && recognitionResult.result && recognitionResult.result.length > 0) {
             suggestionsContainer.innerHTML = '<h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">识别到的杂物及整理建议：</h3>';
-            recognitionResult.result.forEach(obj => {
+            
+            // 过滤低置信度的结果（置信度低于0.3的忽略）
+            const filteredResults = recognitionResult.result.filter(obj => 
+                obj.score && obj.score > 0.3
+            );
+            
+            if (filteredResults.length === 0) {
+                suggestionsContainer.innerHTML = '<p class="text-center text-gray-500">识别置信度较低，请尝试更清晰的图片或调整拍摄角度。</p>';
+                return;
+            }
+            
+            filteredResults.forEach(obj => {
                 // 优化：优先使用 keyword 字段，如果不存在或为空，则使用 root 字段
-                const itemName = obj.keyword && obj.keyword.trim() !== '' ? obj.keyword : obj.root; 
+                const itemName = obj.keyword && obj.keyword.trim() !== '' ? obj.keyword : obj.root;
+                const confidence = obj.score ? Math.round(obj.score * 100) : 0;
 
                 const suggestion = organizationSuggestions[itemName];
 
@@ -284,6 +347,7 @@ recognizeButton.addEventListener('click', async function() {
                             <img src="${suggestion.imageUrl}" alt="${suggestion.tool} 图片" class="w-24 h-24 rounded-md object-cover mb-4 sm:mb-0 sm:mr-4 border border-gray-200">
                             <div class="flex-1 text-center sm:text-left">
                                 <p class="text-lg font-bold text-blue-600 mb-1">${itemName}</p>
+                                <p class="text-gray-500 text-xs mb-2">识别置信度: ${confidence}%</p>
                                 <p class="text-gray-800 mb-2">建议收纳工具: <span class="font-semibold">${suggestion.tool}</span></p>
                                 <p class="text-gray-600 text-sm">${suggestion.description}</p>
                             </div>
@@ -296,6 +360,7 @@ recognizeButton.addEventListener('click', async function() {
                         <div class="bg-white rounded-lg shadow-md p-4 mb-4 flex items-center transition duration-300 ease-in-out hover:shadow-lg">
                             <div class="flex-1 text-center">
                                 <p class="text-lg font-bold text-gray-600 mb-1">${itemName}</p>
+                                <p class="text-gray-500 text-xs mb-2">识别置信度: ${confidence}%</p>
                                 <p class="text-gray-500 text-sm">暂无特定收纳建议，请自行探索。</p>
                             </div>
                         </div>

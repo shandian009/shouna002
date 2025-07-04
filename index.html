@@ -123,6 +123,7 @@ async function callImageRecognitionAPI(base64Image) {
 
 // 整理建议数据 (真实场景中，这些数据可能来自后端或更复杂的知识库)
 const organizationSuggestions = {
+    // 现有建议
     'T恤': {
         tool: '折叠收纳盒',
         imageUrl: 'https://placehold.co/150x150/87CEEB/ffffff?text=折叠收纳盒',
@@ -272,8 +273,8 @@ recognizeButton.addEventListener('click', async function() {
         if (recognitionResult && recognitionResult.result && recognitionResult.result.length > 0) {
             suggestionsContainer.innerHTML = '<h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">识别到的杂物及整理建议：</h3>';
             recognitionResult.result.forEach(obj => {
-                const itemName = obj.root; // 百度通用物体识别返回的物体名称通常在 'root' 字段
-                // 或者 obj.keyword，具体取决于百度 API 的哪个接口和返回结构
+                // 优化：优先使用 keyword 字段，如果不存在或为空，则使用 root 字段
+                const itemName = obj.keyword && obj.keyword.trim() !== '' ? obj.keyword : obj.root; 
 
                 const suggestion = organizationSuggestions[itemName];
 

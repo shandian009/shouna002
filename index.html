@@ -338,6 +338,7 @@ recognizeButton.addEventListener('click', async function() {
                 // 优化：优先使用 keyword 字段，如果不存在或为空，则使用 root 字段
                 const itemName = obj.keyword && obj.keyword.trim() !== '' ? obj.keyword : obj.root;
                 const confidence = obj.score ? Math.round(obj.score * 100) : 0;
+                const location = obj.location ? `位置: (${obj.location.left}, ${obj.location.top})` : '';
 
                 const suggestion = organizationSuggestions[itemName];
 
@@ -347,7 +348,7 @@ recognizeButton.addEventListener('click', async function() {
                             <img src="${suggestion.imageUrl}" alt="${suggestion.tool} 图片" class="w-24 h-24 rounded-md object-cover mb-4 sm:mb-0 sm:mr-4 border border-gray-200">
                             <div class="flex-1 text-center sm:text-left">
                                 <p class="text-lg font-bold text-blue-600 mb-1">${itemName}</p>
-                                <p class="text-gray-500 text-xs mb-2">识别置信度: ${confidence}%</p>
+                                <p class="text-gray-500 text-xs mb-2">识别置信度: ${confidence}% ${location}</p>
                                 <p class="text-gray-800 mb-2">建议收纳工具: <span class="font-semibold">${suggestion.tool}</span></p>
                                 <p class="text-gray-600 text-sm">${suggestion.description}</p>
                             </div>
@@ -360,7 +361,7 @@ recognizeButton.addEventListener('click', async function() {
                         <div class="bg-white rounded-lg shadow-md p-4 mb-4 flex items-center transition duration-300 ease-in-out hover:shadow-lg">
                             <div class="flex-1 text-center">
                                 <p class="text-lg font-bold text-gray-600 mb-1">${itemName}</p>
-                                <p class="text-gray-500 text-xs mb-2">识别置信度: ${confidence}%</p>
+                                <p class="text-gray-500 text-xs mb-2">识别置信度: ${confidence}% ${location}</p>
                                 <p class="text-gray-500 text-sm">暂无特定收纳建议，请自行探索。</p>
                             </div>
                         </div>

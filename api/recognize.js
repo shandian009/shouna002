@@ -60,10 +60,12 @@ function mergeResults(results) {
 
     // 收集所有识别结果
     results.forEach(result => {
+        // 处理多主体检测API的结果
         if (result.result && Array.isArray(result.result)) {
             result.result.forEach(item => {
-                const key = item.keyword || item.root || item.name || '未知物品';
-                const score = item.score || item.baike_info?.image_url ? 0.8 : 0.5;
+                // 多主体检测API返回的字段可能不同
+                const key = item.keyword || item.root || item.name || item.class || '未知物品';
+                const score = item.score || item.confidence || (item.baike_info?.image_url ? 0.8 : 0.5);
                 
                 if (!merged[key]) {
                     merged[key] = {
@@ -71,15 +73,44 @@ function mergeResults(results) {
                         root: item.root || key,
                         score: score,
                         count: 1,
-                        sources: []
+                        sources: [],
+                        // 多主体检测API可能提供位置信息
+                        location: item.location || null
                     };
                 } else {
                     merged[key].score = Math.max(merged[key].score, score);
                     merged[key].count += 1;
+                    // 如果新结果有位置信息，保留它
+                    if (item.location && !merged[key].location) {
+                        merged[key].location = item.location;
+                    }
                 }
                 
                 if (item.baike_info?.image_url) {
                     merged[key].sources.push('baike');
+                }
+            });
+        }
+        
+        // 处理多主体检测API的特殊返回格式
+        if (result.objects && Array.isArray(result.objects)) {
+            result.objects.forEach(item => {
+                const key = item.class || item.name || '未知物品';
+                const score = item.confidence || item.score || 0.5;
+                
+                if (!merged[key]) {
+                    merged[key] = {
+                        keyword: key,
+                        root: key,
+                        score: score,
+                        count: 1,
+                        sources: ['multi_object_detect'],
+                        location: item.location || null
+                    };
+                } else {
+                    merged[key].score = Math.max(merged[key].score, score);
+                    merged[key].count += 1;
+                    merged[key].sources.push('multi_object_detect');
                 }
             });
         }
@@ -88,7 +119,9 @@ function mergeResults(results) {
     // 转换为数组并按置信度排序
     Object.values(merged).forEach(item => {
         // 根据出现次数和置信度计算最终分数
-        const finalScore = item.score * (1 + item.count * 0.1);
+        // 多主体检测API的结果给予更高权重
+        const sourceWeight = item.sources.includes('multi_object_detect') ? 1.2 : 1.0;
+        const finalScore = item.score * (1 + item.count * 0.1) * sourceWeight;
         allItems.push({
             ...item,
             finalScore: finalScore
@@ -102,7 +135,8 @@ function mergeResults(results) {
         .map(item => ({
             keyword: item.keyword,
             root: item.root,
-            score: item.finalScore
+            score: item.finalScore,
+            location: item.location
         }));
 }
 
@@ -123,6 +157,8 @@ module.exports = async (req, res) => {
     try {
         // 并行调用多个百度API接口以提高识别精度
         const apiCalls = [
+            // 图像多主体检测（高精度，推荐）
+            callBaiduAPI('v1/multi_object_detect', image).catch(err => ({ error: 'multi_object_detect', message: err.message })),
             // 通用物体识别（基础）
             callBaiduAPI('v2/advanced_general', image).catch(err => ({ error: 'advanced_general', message: err.message })),
             // 图像主体检测（更精准）
